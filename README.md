@@ -1,4 +1,4 @@
-<h1><img src="public/icons/icon16.svg" height="24" width="24"/> Scalar OpenAPI Viewer</h1>
+<h1><img src="https://raw.githubusercontent.com/devlulcas/scalar-openapi-extension/refs/heads/main/public/icons/icon16.svg" height="24" width="24"/> Scalar OpenAPI Viewer</h1>
 
 A Chrome extension that detects OpenAPI specifications and renders them using [Scalar's](https://scalar.com) beautiful API reference UI.
 
@@ -21,7 +21,7 @@ A Chrome extension that detects OpenAPI specifications and renders them using [S
 
 ### From GitHub Releases
 
-1. Download the latest release from the [releases page](../../releases)
+1. Download the latest release from the [releases page](https://github.com/devlulcas/scalar-openapi-extension/releases)
 2. Extract the zip file
 3. Open Chrome and navigate to `chrome://extensions/`
 4. Enable **Developer Mode** (toggle in top right)
