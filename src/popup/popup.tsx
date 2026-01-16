@@ -9,71 +9,64 @@ import { Loader } from '../components/loader';
 import { checkSwagger, type SwaggerStatus } from '../lib/check-swagger';
 import css from './popup.module.css';
 
-function useOpenApiSpecStatusFromTab() {
+function useOpenApiSpecStatus() {
   const [status, setStatus] = useState<SwaggerStatus>(checkSwagger(null));
 
+  // When the popup is opened, get the status from the background script
   useEffect(() => {
-    const checkStatus = async () => {
+    const getOpenApiSpecStatus = async () => {
       try {
         const [tab] = await chrome.tabs.query({
           active: true,
           currentWindow: true,
         });
-        setStatus(checkSwagger(tab.url ?? null));
-      } catch (error) {
-        console.error('Failed to get swagger status:', error);
-        setStatus(checkSwagger(null));
+
+        if (!tab?.id) return;
+
+        const status: SwaggerStatus | null = await chrome.runtime.sendMessage({
+          type: 'GET_OPEN_API_SPEC_STATUS',
+          tabId: tab.id,
+        });
+
+        console.debug('GET_OPEN_API_SPEC_STATUS', status);
+
+        if (status) {
+          setStatus(status);
+        }
+      } catch {
+        // Ignore errors - background might not have status yet
       }
     };
 
-    const ms = 200;
-    const interval = setInterval(() => {
-      if (status.state !== 'idle') return;
-      checkStatus();
-    }, ms);
-
-    return () => clearInterval(interval);
-  }, [status.state]);
-
-  return { status, setStatus };
-}
-
-function useOpenApiSpecStatusFromBackground() {
-  const [status, setStatus] = useState<SwaggerStatus>(checkSwagger(null));
-  console.log('fromBackground', status);
-  useEffect(() => {
-    const sendMessage = async () => {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-      const status: SwaggerStatus | undefined =
-        await chrome.runtime.sendMessage({
-          type: 'GET_OPEN_API_SPEC_STATUS',
-          tabId: tab?.id,
-        });
-
-      setStatus(status ?? checkSwagger(null));
-    };
-
-    sendMessage();
+    getOpenApiSpecStatus();
   }, []);
 
-  return { status, setStatus };
+  // Listen for messages from the background script
+  useEffect(() => {
+    const messageListener = (message: {
+      type: string;
+      status: SwaggerStatus;
+    }) => {
+      if (message.type === 'SET_OPEN_API_SPEC_STATUS') {
+        setStatus(message.status);
+        console.debug('SET_OPEN_API_SPEC_STATUS', message.status);
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(messageListener);
+
+    return () => {
+      chrome.runtime.onMessage.removeListener(messageListener);
+    };
+  }, []);
+
+  console.log('status', status);
+
+  return { status };
 }
 
 export function Popup() {
-  const fromTab = useOpenApiSpecStatusFromTab();
-  const fromBackground = useOpenApiSpecStatusFromBackground();
-
-  console.log('fromTab', fromTab);
-  console.log('fromBackground', fromBackground);
-
-  const possibleStatuses = [fromTab.status, fromBackground.status].sort(
-    (a, b) => (a.state === 'success' ? 1 : b.state === 'success' ? -1 : 0),
-  );
-
-  const status = possibleStatuses[0];
+  const { status } = useOpenApiSpecStatus();
 
   return (
     <div className={css.container}>
@@ -132,20 +125,14 @@ function OpenApiReferenceButton({ status }: { status: SwaggerStatus }) {
     chrome.tabs.create({ url: viewerUrl });
   };
 
-  if (status.type === 'swagger') {
-    return <p className={css.url}>{status.url}</p>;
-  }
-
-  if (status.type === 'index') {
-    return (
-      <p className={css.url}>
-        Search the API documentation for the "Open in Scalar" button
-      </p>
-    );
-  }
-
-  if (status.type === 'swagger') {
-    return (
+  return (
+    <>
+      <p className={css.url}>{status.url}</p>
+      {status.type === 'index' && (
+        <p className={css.url}>
+          Search the API documentation for the "Open in Scalar" button
+        </p>
+      )}
       <button
         type="button"
         onClick={handleOpenViewer}
@@ -153,8 +140,8 @@ function OpenApiReferenceButton({ status }: { status: SwaggerStatus }) {
       >
         Open API Reference
       </button>
-    );
-  }
+    </>
+  );
 }
 
 function NotFound({ status }: { status: SwaggerStatus }) {

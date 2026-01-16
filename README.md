@@ -1,80 +1,80 @@
 # Scalar OpenAPI Viewer
 
-A Chrome extension that automatically detects OpenAPI specifications at `/swagger.json` endpoints and renders them using [Scalar's](https://scalar.com) beautiful API reference UI.
-
-
+A Chrome extension that detects OpenAPI specifications and renders them using [Scalar's](https://scalar.com) beautiful API reference UI.
 
 ## Features
 
-- **Auto-detection**: Automatically checks if you are in a `/swagger.json` or has a `/swagger.json` link in the current website.
-- **Beautiful UI**: Uses Scalar's modern API reference interface
-- **Minimal dependencies**: Only essential packages included
+- **Link Detection**: Finds `swagger.json` links on any webpage and adds an "Open in Scalar" button next to them
+- **Popup Status**: Shows whether the current page has an OpenAPI spec available
+- **Manual URL Input**: Enter any OpenAPI spec URL directly from the popup
+- **Beautiful Viewer**: Renders API documentation using Scalar's modern interface with sidebar navigation, request examples, and more
+
+## How It Works
+
+1. **Content Script** scans pages for links ending in `swagger.json` and injects "Open in Scalar" buttons
+2. **Popup** displays detection status and provides quick access to the viewer
+3. **Viewer** opens in a new tab and renders the OpenAPI spec with Scalar's API Reference
 
 ## Installation
 
-### Via github releases
+### From GitHub Releases
 
-- Download the latest release from the releases page and extract the zip file.
-- Open Chrome and navigate to chrome://extensions/.
-- Enable Developer Mode.
-- Click on Load unpacked and select the extracted folder.
+1. Download the latest release from the [releases page](../../releases)
+2. Extract the zip file
+3. Open Chrome and navigate to `chrome://extensions/`
+4. Enable **Developer Mode** (toggle in top right)
+5. Click **Load unpacked** and select the extracted folder
 
 ### Development
 
-1. Install dependencies:
-
 ```bash
+# Install dependencies
 npm install
-```
 
-2. Build the extension:
-
-```bash
+# Build the extension
 npm run build
-```
 
-3. Load in Chrome:
-   - Open `chrome://extensions/`
-   - Enable "Developer mode"
-   - Click "Load unpacked"
-   - Select the `dist` folder
-
-
-4. For development with auto-rebuild:
-
-```bash
+# Development mode with auto-rebuild
 npm run dev
 ```
 
+Then load the `dist` folder in Chrome:
+1. Open `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select the `dist` folder
+
 ## Usage
 
-1. Navigate to any website that has an OpenAPI spec at `/swagger.json` or `/swagger.html`
-2. The extension icon will show a green checkmark (✓) if detected or a button "Open in Scalar"
-3. Click the extension icon to see the status
-4. Click "Open API Reference" to view the full API documentation
+- **On API documentation pages**: Look for the green "Open in Scalar" button next to `swagger.json` links
+- **Via popup**: Click the extension icon to check status or enter a spec URL manually
+- **Direct URL**: Open the viewer with any OpenAPI spec URL using the manual input
 
-## Tech Stack
-
-Typescript, React and CSS Modules (the good and old combo).
-For more information check the package.json file.
-
-## Project Structure (the relevant parts)
+## Project Structure
 
 ```
 ├── public/
-│   ├── manifest.json     # Chrome extension manifest
+│   ├── manifest.json     # Chrome extension manifest (v3)
 │   └── icons/            # Extension icons
 ├── src/
-│   ├── background.ts     # Service worker
-│   ├── content.ts        # Content script
-│   ├── popup/            # Popup UI components
+│   ├── background.ts     # Service worker for messaging
+│   ├── content.ts        # Injects buttons on web pages
+│   ├── components/       # Shared React components
+│   ├── lib/              # Utilities
+│   ├── popup/            # Extension popup UI
 │   └── viewer/           # Full-page API reference viewer
 ├── popup.html            # Popup entry point
-└──  viewer.html           # Viewer entry point
+└── viewer.html           # Viewer entry point
 ```
+
+## Tech Stack
+
+- TypeScript
+- React 18
+- CSS Modules
+- Vite
+- Scalar API Reference React
 
 ## License
 
-MIT
-
-> Do whatever you want with it, but contribute back if possible
+MIT — Do whatever you want with it, but contribute back if possible.

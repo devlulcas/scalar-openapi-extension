@@ -7,6 +7,9 @@ const colors = {
   },
 } as const;
 
+const SELECTOR =
+  'a[href$="swagger.json"]:not([data-scalar-injection-status="viewed"])';
+
 function createScalarViewerLink(href: string): HTMLAnchorElement {
   const anchor = document.createElement('a');
   anchor.href = href;
@@ -18,7 +21,7 @@ function createScalarViewerLink(href: string): HTMLAnchorElement {
     align-items: center;
     justify-content: center;
     padding: 4px 10px;
-    min-height: 2lh;
+    min-height: 30px;
     height: 100%;
     background: linear-gradient(135deg, ${colors.primary.dark} 0%, ${colors.primary.light} 100%);
     border: none;
@@ -51,77 +54,90 @@ function createWrapper(): HTMLDivElement {
 }
 
 function sendOpenApiSpecToBackground(specUrl: string): void {
-  chrome.runtime.sendMessage(
-    {
-      type: 'OPEN_API_SPEC',
-      specUrl,
-    },
-    (response) => {
-      if (response.success) {
-        console.log('OpenAPI spec sent to background');
-      } else {
-        console.error('Failed to send OpenAPI spec to background');
-      }
-    },
-  );
+  chrome.runtime.sendMessage({ type: 'OPEN_API_SPEC', specUrl }, () => {
+    // Ignore response - prevents errors if background doesn't respond
+    void chrome.runtime.lastError;
+  });
 }
 
-function injectViewerButtons(): boolean {
-  const swaggerLinks = document.querySelectorAll<HTMLAnchorElement>(
-    'a[href$="swagger.json"]:not([data-scalar-injected])',
-  );
-
-  if (swaggerLinks.length === 0) {
-    return false;
-  }
+function injectViewerButtons(): number {
+  const swaggerLinks = document.querySelectorAll<HTMLAnchorElement>(SELECTOR);
 
   for (const link of swaggerLinks) {
-    link.dataset.scalarInjected = 'true';
+    link.dataset.scalarInjectionStatus = 'viewed';
+
+    if (!URL.canParse(link.href)) {
+      continue;
+    }
+
+    const url = new URL(link.href);
+
+    if (url.hostname === 'validator.swagger.io') {
+      continue;
+    }
 
     sendOpenApiSpecToBackground(link.href);
 
     const wrapper = createWrapper();
-
     const viewerUrl = chrome.runtime.getURL(
       `viewer.html?url=${encodeURIComponent(link.href)}`,
     );
-
     const scalarLink = createScalarViewerLink(viewerUrl);
 
     link.parentNode?.insertBefore(wrapper, link);
+    link.style.cssText = 'display: inline-flex; align-items: center;';
     wrapper.appendChild(link);
     wrapper.appendChild(scalarLink);
   }
 
-  return true;
+  return swaggerLinks.length;
 }
 
-function retry(
-  callback: () => boolean,
-  retries: number = 3,
-  delay: number = 500,
-): void {
-  if (callback()) {
-    return;
-  }
+function debounce<T extends (...args: unknown[]) => void>(
+  fn: T,
+  delay: number,
+): (...args: Parameters<T>) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  setTimeout(() => {
-    if (retries > 0) {
-      retry(callback, retries - 1, delay * 2);
-    }
-  }, delay);
+  return (...args: Parameters<T>) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
 }
 
-window.addEventListener('load', () => {
-  retry(injectViewerButtons, 3, 500);
-  
-  const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-        injectViewerButtons()
+function init(): void {
+  // Initial injection
+  const found = injectViewerButtons();
+
+  // If we found links immediately, no need to observe
+  if (found > 0) return;
+
+  // Debounced handler for mutations
+  const debouncedInject = debounce(() => {
+    // Check if there are any unprocessed links before doing work
+    if (document.querySelector(SELECTOR)) {
+      const injected = injectViewerButtons();
+      // Disconnect observer once we've found and injected links
+      if (injected > 0) {
+        observer.disconnect();
       }
     }
+  }, 300);
+
+  const observer = new MutationObserver(debouncedInject);
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
   });
-  
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-});
+
+  // Auto-disconnect after 10 seconds to prevent indefinite observation
+  setTimeout(() => observer.disconnect(), 10_000);
+}
+
+// Start when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
