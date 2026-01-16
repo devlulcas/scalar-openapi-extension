@@ -1,6 +1,8 @@
-# Scalar OpenAPI Viewer
+<h1><img src="public/icons/icon16.svg" height="24" width="24"/> Scalar OpenAPI Viewer</h1>
 
 A Chrome extension that detects OpenAPI specifications and renders them using [Scalar's](https://scalar.com) beautiful API reference UI.
+
+![preview](.github/images/preview.webp)
 
 ## Features
 
