@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Scalar OpenAPI Viewer",
+  "version": "1.0.0",
+  "description": "Automatically detects and renders OpenAPI specs from /swagger.json endpoints with Scalar's beautiful API reference",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["*://*/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["viewer.html", "assets/*"],
+      "matches": ["*://*/*"]
+    }
+  ]
+}

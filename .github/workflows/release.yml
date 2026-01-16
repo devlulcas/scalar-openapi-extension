@@ -1,0 +1,81 @@
+name: Build and Release Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., v1.0.0)"
+        required: true
+        default: "v1.0.0"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install --frozen-lockfile
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          echo "Build output contents:"
+          ls -la dist/
+          echo "Checking for required files:"
+          test -f dist/manifest.json || (echo "manifest.json missing" && exit 1)
+          echo "Manifest is present"
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create extension zip
+        run: |
+          cd dist
+          zip -r ../scalar-openapi-extension-${{ steps.version.outputs.version }}.zip .
+          cd ..
+          echo "Extension zip created:"
+          ls -la scalar-openapi-extension-${{ steps.version.outputs.version }}.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Scalar OpenAPI Extension ${{ steps.version.outputs.version }}
+          body: |
+            ## Scalar OpenAPI Extension ${{ steps.version.outputs.version }}
+
+            ### Installation
+            1. Download the `scalar-openapi-extension-${{ steps.version.outputs.version }}.zip` file
+            2. Extract the zip file
+            3. Open Chrome and go to `chrome://extensions/`
+            4. Enable "Developer mode" in the top right
+            5. Click "Load unpacked" and select the extracted folder
+
+            ### Changes
+            - See commit history for detailed changes
+          files: scalar-openapi-extension-${{ steps.version.outputs.version }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
