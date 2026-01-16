@@ -2,7 +2,7 @@
 
 A Chrome extension that detects OpenAPI specifications and renders them using [Scalar's](https://scalar.com) beautiful API reference UI.
 
-![preview](./.github/images/preview.webp)
+![preview](https://raw.githubusercontent.com/devlulcas/scalar-openapi-extension/refs/heads/main/.github/images/preview.webp)
 
 ## Features
 
